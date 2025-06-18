@@ -3,6 +3,14 @@ import Employee from "../models/Employee.js";
 import { User } from "../models/User.models.js";
 import bcrypt from "bcrypt";
 import path from "path";
+import fs from 'fs'
+import { fileURLToPath } from "url";
+import Leave from "../models/Leave.js";
+import Salary from "../models/Salary.js";
+import Attendance from "../models/Attendance.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -166,4 +174,46 @@ const fetchEmployeesByDepId = async (req, res) => {
       .json({ success: false, error: "get employeesByDepId server error" });
   }
 }
-export { addEmployee, upload, getEmployees, getEmployee, updateEmployee, fetchEmployeesByDepId };
+
+const deleteEmployee = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const employee = await Employee.findById(id).populate("userId");
+    if (!employee) {
+      return res.status(404).json({ success: false, error: "Employee not found" });
+    }
+
+    // ✅ Delete profile image if it exists
+    const profileImage = employee.userId.profileImage;
+    if (profileImage) {
+      const imagePath = path.join(__dirname, "..", "public", "uploads", profileImage);
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+      }
+    }
+
+    // ✅ Delete leaves
+    await Leave.deleteMany({ employeeId: employee._id });
+
+    // ✅ Delete salaries
+    await Salary.deleteMany({ employeeId: employee._id });
+
+    // ✅ Delete attendance records
+    await Attendance.deleteMany({ employeeId: employee._id });
+
+    // ✅ Delete user
+    await User.findByIdAndDelete(employee.userId._id);
+
+    // ✅ Delete employee
+    await Employee.findByIdAndDelete(id);
+
+    return res.status(200).json({ success: true, message: "Employee and all related data deleted successfully" });
+  } catch (error) {
+    console.error("Delete error:", error);
+    return res.status(500).json({ success: false, error: "Server error while deleting employee" });
+  }
+};
+
+
+export { addEmployee, upload, getEmployees, getEmployee, updateEmployee, fetchEmployeesByDepId, deleteEmployee };

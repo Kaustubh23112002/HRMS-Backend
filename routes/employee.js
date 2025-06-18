@@ -6,7 +6,8 @@ import {
   getEmployees,
   getEmployee,
   updateEmployee,
-  fetchEmployeesByDepId
+  fetchEmployeesByDepId,
+  deleteEmployee
 } from "../controllers/employeeController.js";
 
 const router = express.Router();
@@ -16,5 +17,6 @@ router.post("/add", authMiddleware, upload.single("image"), addEmployee);
 router.put('/:id',authMiddleware, updateEmployee)
 router.get('/department/:id',authMiddleware, fetchEmployeesByDepId)
 router.get("/:id/:role", authMiddleware, getEmployee);
+router.delete("/:id", authMiddleware, deleteEmployee);
 
 export default router;
