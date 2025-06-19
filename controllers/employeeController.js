@@ -2,22 +2,26 @@ import multer from "multer";
 import Employee from "../models/Employee.js";
 import { User } from "../models/User.models.js";
 import bcrypt from "bcrypt";
-import path from "path";
-import fs from 'fs'
-import { fileURLToPath } from "url";
+import { v2 as cloudinary } from "cloudinary";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
 import Leave from "../models/Leave.js";
 import Salary from "../models/Salary.js";
 import Attendance from "../models/Attendance.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "public/uploads");
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
+// Setup Cloudinary storage for multer
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: "employee-profiles",
+    allowed_formats: ["jpg", "jpeg", "png", "webp"],
+    transformation: [{ width: 500, height: 500, crop: "limit" }],
   },
 });
 
@@ -53,7 +57,7 @@ const addEmployee = async (req, res) => {
       email,
       password: hashPassword,
       role,
-      profileImage: req.file ? req.file.filename : "",
+       profileImage: req.file ? req.file.path : "", // Cloudinary returns a full URL
     });
     const savedUser = await newUser.save();
 
@@ -192,6 +196,11 @@ const deleteEmployee = async (req, res) => {
         fs.unlinkSync(imagePath);
       }
     }
+
+     // OPTIONAL: Delete image from Cloudinary using public_id
+    const imageUrl = employee.userId.profileImage;
+    const publicId = imageUrl?.split('/').slice(-1)[0].split('.')[0];
+    await cloudinary.uploader.destroy(`employee-profiles/${publicId}`);
 
     // ✅ Delete leaves
     await Leave.deleteMany({ employeeId: employee._id });
