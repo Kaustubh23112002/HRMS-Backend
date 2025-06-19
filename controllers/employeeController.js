@@ -188,15 +188,6 @@ const deleteEmployee = async (req, res) => {
       return res.status(404).json({ success: false, error: "Employee not found" });
     }
 
-    // ✅ Delete profile image if it exists
-    const profileImage = employee.userId.profileImage;
-    if (profileImage) {
-      const imagePath = path.join(__dirname, "..", "public", "uploads", profileImage);
-      if (fs.existsSync(imagePath)) {
-        fs.unlinkSync(imagePath);
-      }
-    }
-
      // OPTIONAL: Delete image from Cloudinary using public_id
     const imageUrl = employee.userId.profileImage;
     const publicId = imageUrl?.split('/').slice(-1)[0].split('.')[0];
