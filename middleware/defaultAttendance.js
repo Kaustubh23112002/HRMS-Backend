@@ -2,22 +2,32 @@ import Attendance from "../models/Attendance.js";
 import Employee from "../models/Employee.js";
 
 const defaultAttendance = async (req, res, next) => {
+  try {
+    const date = new Date().toISOString().split("T")[0];
 
-    try {
-        const date = new Date().toISOString().split('T')[0];
-        const existingAttendance= await Attendance.findOne({date});
+    // Get all employees
+    const employees = await Employee.find();
 
-        if(!existingAttendance){
-            const employees = await Employee.find({});
-            const attendance = employees.map(employee =>
-            ({ date, employeeId: employee._id, status: null}));
+    for (const emp of employees) {
+      const alreadyExists = await Attendance.findOne({
+        employeeId: emp._id,
+        date,
+      });
 
-            await Attendance.insertMany(attendance);
-        }
-            next();
-        } catch(error){
-            res.status(500).json({success: false, error: error})
-        }
+      if (!alreadyExists) {
+        await Attendance.create({
+          employeeId: emp._id,
+          date,
+          status: null, // or default to "Not Marked"
+        });
+      }
     }
 
-    export default defaultAttendance
+    next();
+  } catch (error) {
+    console.error("Default attendance error:", error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+export default defaultAttendance;
